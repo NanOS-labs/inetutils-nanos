@@ -1,0 +1,77 @@
+name = "inetd"
+# GNU inetutils — the SERVICES build (servers + select clients), the companion to the ping-only
+# manifest in ../inetutils-port. One inetutils source tree, configured to produce the internet
+# super-server inetd (FAZA H2); telnetd (H3) and the telnet/ifconfig/traceroute clients (FAZA I)
+# are mknx'd from the SAME build via hooks/post_build.sh.
+source = "dir:inetutils-2.5"
+build = "autotools"
+# Enable only inetd among the servers; clients stay off in this first pass (telnet/ifconfig/
+# traceroute are added back as the services build grows). Everything ring-3-hostile (rsh/rexec/
+# auth/encryption/tftp) stays disabled.
+configure = [
+  "--disable-clients",
+  # Re-enable the three diagnostic clients we want (override --disable-clients): the telnet client
+  # (loopback test of our telnetd), ifconfig (live DHCP config), traceroute (ICMP time-exceeded).
+  "--enable-telnet",
+  "--enable-ifconfig",
+  "--enable-traceroute",
+  "--disable-ftpd",
+  "--disable-rexecd",
+  "--disable-rlogind",
+  "--disable-rshd",
+  "--disable-syslogd",
+  "--disable-talkd",
+  "--enable-telnetd",
+  "--disable-tftpd",
+  "--disable-uucpd",
+  "--enable-inetd",
+  "--disable-rpath",
+  "--without-libidn2",
+  "--without-libcrypt",
+  "--disable-ipv6",
+  "--disable-pam",
+  # gcc 14 promotes -Wincompatible-pointer-types to an error; inetutils' telnet client (commands.c
+  # genget const-correctness) predates that. Demote it back to a warning — a build flag, not a
+  # source patch — so the unmodified upstream telnet compiles.
+  "CFLAGS=-O2 -Wno-error=incompatible-pointer-types -Wno-error=int-conversion",
+]
+# Cross-compile autoconf answers — same gnulib/picolibc reality as the ping manifest, plus
+# server-side probes. configure can't run target binaries.
+cache = [
+  "ac_cv_func_select=yes",
+  "gl_cv_func_select_supports0=yes",
+  "ac_cv_func_getaddrinfo=yes",
+  "ac_cv_func_gethostbyname=yes",
+  "ac_cv_func_socket=yes",
+  "ac_cv_func_connect=yes",
+  "ac_cv_search_gethostbyname=none required",
+  "ac_cv_search_socket=none required",
+  "ac_cv_func_malloc_0_nonnull=yes",
+  "ac_cv_func_realloc_0_nonnull=yes",
+  "ac_cv_func_glob=yes",
+  "gl_cv_gnu_glob_interface_version_1_2=no",
+  "ac_cv_have_decl_openpty=yes",
+  "ac_cv_have_decl_forkpty=yes",
+  "gl_cv_func_openpty_const=yes",
+  "gl_cv_func_forkpty_const=yes",
+  "ac_cv_func_rewinddir=yes",
+  "ac_cv_func_fdopendir=yes",
+  "ac_cv_func_dirfd=yes",
+  "ac_cv_have_decl_dirfd=yes",
+  "gl_cv_func_dirfd_macro=no",
+  "ac_cv_func_scandir=yes",
+  "ac_cv_header_sys_uio_h=yes",
+  "ac_cv_header_net_if_h=yes",
+  "ac_cv_header_utmp_h=yes",
+  "ac_cv_header_arpa_tftp_h=yes",
+  # Force gnulib to build + use its OWN GNU getopt (REPLACE_GETOPT=1) instead of picolibc's, which
+  # mishandles argp's leading-'-' optstring and rejects valid SHORT options ("invalid option --
+  # 'q'"). Cross-compile can't run the probe, so pin both results to "no" (= system getopt is not
+  # a working POSIX/GNU getopt) which sets REPLACE_GETOPT. This makes -q/-m/-w etc. work in the
+  # FAZA I clients (traceroute/ifconfig/telnet), not just the long forms.
+  "gl_cv_func_getopt_posix=no",
+  "gl_cv_func_getopt_gnu=no",
+]
+needs = ["libc.ndl"]
+binary = "src/inetd"
+install = "/nanos/bin"

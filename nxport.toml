@@ -1,0 +1,61 @@
+name = "ping"
+# GNU inetutils — the plan's binding choice for a real ping (SOCK_RAW/ICMP + getaddrinfo).
+source = "dir:inetutils-2.5"
+build = "autotools"
+# Build ONLY ping: disable the servers + the other clients (telnet/ftp/rsh/... need terminals,
+# ptys, and APIs beyond ping's needs). ping itself is SOCK_RAW/ICMP + getaddrinfo — exactly the
+# surface we built + proved with nettest/pingtest.
+configure = [
+  "--disable-servers",
+  "--disable-clients",
+  "--enable-ping",
+  "--disable-rpath",
+  "--without-libidn2",
+  "--without-libcrypt",
+  "--disable-ipv6",
+]
+# Cross-compile autoconf answers (configure can't run target binaries). gnulib + inetutils probes.
+cache = [
+  "ac_cv_func_select=yes",
+  "gl_cv_func_select_supports0=yes",
+  "ac_cv_func_getaddrinfo=yes",
+  "ac_cv_func_gethostbyname=yes",
+  "ac_cv_func_socket=yes",
+  "ac_cv_func_connect=yes",
+  "ac_cv_search_gethostbyname=none required",
+  "ac_cv_search_socket=none required",
+  "ac_cv_func_malloc_0_nonnull=yes",
+  "ac_cv_func_realloc_0_nonnull=yes",
+  # picolibc ships a BSD <glob.h> (no GNU GLOB_PERIOD/__GLOB_FLAGS/etc.), but gnulib still
+  # compiles its GNU glob.c. Force REPLACE_GLOB=1 so gnulib generates+uses its own GNU glob.h
+  # (glob-libc.gl.h) instead of the incompatible system one.
+  "ac_cv_func_glob=yes",
+  "gl_cv_gnu_glob_interface_version_1_2=no",
+  # gnulib bundles openpty/forkpty for inetutils' (disabled) telnet/rsh servers; ping never uses
+  # them. Tell gnulib the target HAS them (so its .c compiles to a dead wrapper, not the full
+  # grantpt/unlockpt/ptsname impl picolibc lacks). The unreferenced symbol is never linked.
+  "ac_cv_have_decl_openpty=yes",
+  "ac_cv_have_decl_forkpty=yes",
+  "gl_cv_func_openpty_const=yes",
+  "gl_cv_func_forkpty_const=yes",
+  # fts/ftp-only dir-walking helpers. Claim the target has them so gnulib doesn't wrap DIR with
+  # its own fd-tracking struct (which breaks rewinddir.c against our opaque DIR). ping never
+  # links fts/fdopendir/dirfd, so the unbuilt replacements cost nothing.
+  "ac_cv_func_rewinddir=yes",
+  "ac_cv_func_fdopendir=yes",
+  "ac_cv_func_dirfd=yes",
+  "ac_cv_have_decl_dirfd=yes",
+  "gl_cv_func_dirfd_macro=no",
+  "ac_cv_func_scandir=yes",
+  # We now ship a real <sys/uio.h> (struct iovec lives there per POSIX); let gnulib include_next
+  # it instead of generating its own and redefining struct iovec.
+  "ac_cv_header_sys_uio_h=yes",
+  # We now ship net/if.h, utmp.h and arpa/tftp.h in the sysroot for libinetutils' shared sources
+  # (if_index/logwtmp/tftpsubs are server-only — declared here so they compile, never linked).
+  "ac_cv_header_net_if_h=yes",
+  "ac_cv_header_utmp_h=yes",
+  "ac_cv_header_arpa_tftp_h=yes",
+]
+needs = ["libc.ndl"]
+binary = "ping/ping"
+install = "/nanos/bin"
