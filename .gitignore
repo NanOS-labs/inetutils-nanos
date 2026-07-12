@@ -1,0 +1,15 @@
+build/
+install/
+*.o
+*.a
+*.so
+*.dylib
+*.nxe
+*.elf
+*.ndl
+*.log
+.cache/
+__pycache__/
+*.pyc
+target/
+.DS_Store
