@@ -4,7 +4,7 @@
 # a single binary that fails to mknx does NOT abort the others.
 mknx_if() {   # $1 = built ELF path, $2 = output .nxe name
   if [ -f "$1" ]; then
-    if i686-nanos-mknx "$1" "$PORT/$2" --need libc.ndl; then
+    if "${NX_HOST:-i686-nanos}-mknx" "$1" "$PORT/$2" --need libc.ndl; then
       echo "== produced $PORT/$2 =="
     else
       echo "!! mknx failed for $2 (skipped)"
